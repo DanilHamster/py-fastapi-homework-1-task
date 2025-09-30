@@ -19,27 +19,28 @@ async def get_movies(
     per_page: int = Query(10, ge=1, le=20),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedMoviesResponseSchema:
-    result = await db.execute(
-        select(MovieModel).limit(per_page).offset((page - 1) * per_page)
-    )
-    raw_movies = result.scalars().all()
-    if not raw_movies:
-        raise HTTPException(status_code=404, detail="No movies found.")
-    movies = [MovieListResponseSchema.model_validate(m) for m in raw_movies]
     count_result = await db.execute(
         select(func.count()).select_from(MovieModel)
     )
     count = count_result.scalar()
-    page_count = (count + per_page - 1) // per_page
-    if page == 1:
-        prev_page = None
-    else:
-        prev_page = f"/theater/movies/?page={page - 1}&per_page={per_page}"
+    if count == 0:
+        raise HTTPException(status_code=404, detail="No movies found.")
 
-    if page == page_count:
-        next_page = None
-    else:
-        next_page = f"/theater/movies/?page={page + 1}&per_page={per_page}"
+    page_count = (count + per_page - 1) // per_page
+    if page > page_count:
+        raise HTTPException(status_code=404, detail="Page number exceeds total pages.")
+
+    result = await db.execute(
+        select(MovieModel)
+        .order_by(MovieModel.id.asc())
+        .limit(per_page)
+        .offset((page - 1) * per_page)
+    )
+    raw_movies = result.scalars().all()
+    movies = [MovieListResponseSchema.model_validate(m) for m in raw_movies]
+
+    prev_page = None if page == 1 else f"/theater/movies/?page={page - 1}&per_page={per_page}"
+    next_page = None if page == page_count else f"/theater/movies/?page={page + 1}&per_page={per_page}"
 
     return PaginatedMoviesResponseSchema(
         movies=movies,
@@ -48,6 +49,7 @@ async def get_movies(
         total_pages=page_count,
         total_items=count,
     )
+
 
 
 @router.get("/movies/{movie_id}/", response_model=MovieDetailResponseSchema)
