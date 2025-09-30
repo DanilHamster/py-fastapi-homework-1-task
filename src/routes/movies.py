@@ -28,7 +28,7 @@ async def get_movies(
 
     page_count = (count + per_page - 1) // per_page
     if page > page_count:
-        raise HTTPException(status_code=404, detail="Page number exceeds total pages.")
+        raise HTTPException(status_code=404, detail="No movies found.")
 
     result = await db.execute(
         select(MovieModel)
