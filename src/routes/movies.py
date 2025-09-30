@@ -51,7 +51,6 @@ async def get_movies(
     )
 
 
-
 @router.get("/movies/{movie_id}/", response_model=MovieDetailResponseSchema)
 async def get_movie_id(
     movie_id: int, db: AsyncSession = Depends(get_db)
