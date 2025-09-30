@@ -8,17 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, MovieModel
 from schemas import MovieListResponseSchema, MovieDetailResponseSchema
-from schemas.movies import PaginatedMoviesResponseSchema
 
 router = APIRouter()
 
 
-@router.get("/movies/", response_model=PaginatedMoviesResponseSchema)
+@router.get("/movies/", response_model=MovieListResponseSchema)
 async def get_movies(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=20),
     db: AsyncSession = Depends(get_db),
-) -> PaginatedMoviesResponseSchema:
+) -> MovieListResponseSchema:
     count_result = await db.execute(
         select(func.count()).select_from(MovieModel)
     )
@@ -37,12 +36,12 @@ async def get_movies(
         .offset((page - 1) * per_page)
     )
     raw_movies = result.scalars().all()
-    movies = [MovieListResponseSchema.model_validate(m) for m in raw_movies]
+    movies = [MovieDetailResponseSchema.model_validate(m) for m in raw_movies]
 
     prev_page = None if page == 1 else f"/theater/movies/?page={page - 1}&per_page={per_page}"
     next_page = None if page == page_count else f"/theater/movies/?page={page + 1}&per_page={per_page}"
 
-    return PaginatedMoviesResponseSchema(
+    return MovieListResponseSchema(
         movies=movies,
         prev_page=prev_page,
         next_page=next_page,
